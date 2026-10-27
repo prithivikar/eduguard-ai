@@ -1,3 +1,4 @@
+import os
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,9 +51,24 @@ app = FastAPI(
 )
 
 # CORS configuration
+allowed_origins_env = os.getenv("CORS_ORIGINS", "")
+if allowed_origins_env and allowed_origins_env.strip() != "*":
+    origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+    allow_origin_regex = None
+else:
+    origins = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000"
+    ]
+    # Allow all https origins (Vercel deployments, custom domains, preview branches)
+    allow_origin_regex = r"^https://.*"
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -83,6 +99,8 @@ def root():
         "docs_url": "/docs"
     }
 
+@app.get("/healthz")
+@app.get("/health")
 @app.get("/api/health")
 def health_check():
     return {
